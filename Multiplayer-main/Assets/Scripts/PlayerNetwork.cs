@@ -3,11 +3,14 @@ using Unity.Collections;
 using UnityEngine;
 using System;
 using UnityEditor.MemoryProfiler;
+using System.Collections;
+using TMPro;
+using Unity.Netcode.Components;
 
 public class PlayerNetwork : NetworkBehaviour
 {
     // Сетевые переменные 
-
+    [SerializeField] private GameObject _visualModel;
 
     /// Никнейм: читают все, пишет только сервер.
     /// FixedString32Bytes — сетевой-сериализуемый тип для строк.
@@ -20,10 +23,16 @@ public class PlayerNetwork : NetworkBehaviour
 
 
     /// Здоровье: читают все, пишет только сервер.
-    /// Стартовое значение: 100.
 
     public readonly NetworkVariable<int> HP = new(
         100,
+        NetworkVariableReadPermission.Everyone,
+        NetworkVariableWritePermission.Server
+    );
+
+
+    public NetworkVariable<bool> IsAlive = new(
+        true,
         NetworkVariableReadPermission.Everyone,
         NetworkVariableWritePermission.Server
     );
@@ -46,6 +55,7 @@ public class PlayerNetwork : NetworkBehaviour
         // Подписка на изменения сетевых переменных
         Nickname.OnValueChanged += OnNicknameValueChanged;
         HP.OnValueChanged += OnHealthValueChanged;
+        IsAlive.OnValueChanged += OnIsAliveChanged;
 
         // Если объект уже заспавнен — сразу уведомляем подписчиков
         if (IsSpawned)
@@ -66,6 +76,8 @@ public class PlayerNetwork : NetworkBehaviour
         // Отписка от событий для предотвращения утечек памяти
         Nickname.OnValueChanged -= OnNicknameValueChanged;
         HP.OnValueChanged -= OnHealthValueChanged;
+        IsAlive.OnValueChanged -= OnIsAliveChanged;
+
     }
 
     //  ServerRpc: отправка ника на сервер 
@@ -108,27 +120,92 @@ public class PlayerNetwork : NetworkBehaviour
 
     private void OnHealthValueChanged(int previous, int current)
     {
+        if (!IsServer) return;
         OnHealthChanged?.Invoke(current);
 
         // Логика при смерти (срабатывает только при переходе через 0)
-        if (current <= 0 && previous > 0)
+        if (current <= 0 && IsAlive.Value)
         {
-            OnPlayerDefeatedServerRpc();
+            if (current <= 0 && IsAlive.Value)
+            {
+                // Прямой вызов вместо ServerRpc (мы уже на сервере)
+                Debug.Log($"[Server] Player {Nickname.Value} (ID: {OwnerClientId}) defeated!");
+                if (HP.Value > 0) HP.Value = 0; // страховка
+
+                IsAlive.Value = false;
+                StartCoroutine(RespawnRoutine());
+            }
         }
     }
 
-    // ServerRpc: обработка смерти
 
-    [ServerRpc(RequireOwnership = false)]
-    private void OnPlayerDefeatedServerRpc()
+    private IEnumerator RespawnRoutine()
     {
-        // Здесь можно: начислить очки убийце, заспавнить эффект, запланировать возрождение
-        Debug.Log($"[Server] Player {Nickname.Value} (ID: {OwnerClientId}) defeated!");
+        if (!IsServer) yield break;
 
-        // Пример: не даём здоровью уйти ниже 0 (дополнительная страховка)
-        if (HP.Value > 0)
-            HP.Value = 0;
+        yield return new WaitForSeconds(3f);
+
+        Transform spawnPoint = SpawnManager.Instance?.GetRandomSpawnPoint();
+        if (spawnPoint == null)
+        {
+            Debug.LogError("No spawn point available!");
+            yield break;
+        }
+
+        // Отправляем всем клиентам (или только владельцу) команду на телепорт
+        TeleportClientRpc(spawnPoint.position, spawnPoint.rotation);
+
+        // Также перемещаем на сервере (чтобы серверная позиция совпала)
+        transform.position = spawnPoint.position;
+        transform.rotation = spawnPoint.rotation;
+
+        HP.Value = 100;
+        if (TryGetComponent(out PlayerShooting shooting))
+            shooting.CurrentAmmo.Value = shooting._maxAmmo;
+
+        IsAlive.Value = true;
     }
+
+    [ClientRpc]
+    private void TeleportClientRpc(Vector3 position, Quaternion rotation)
+    {
+        // Выполняется на всех клиентах, включая хоста (но хост уже изменил позицию выше)
+        if (!IsOwner) return; // только владелец должен перемещать свой объект
+
+        // Отключаем CharacterController на время телепорта, чтобы избежать конфликтов
+        var cc = GetComponent<CharacterController>();
+        if (cc != null) cc.enabled = false;
+
+        transform.position = position;
+        transform.rotation = rotation;
+
+        if (cc != null) cc.enabled = true;
+
+        // Если есть NetworkTransform, можно также уведомить его (необязательно)
+        var nt = GetComponent<Unity.Netcode.Components.NetworkTransform>();
+        if (nt != null) nt.Teleport(position, rotation, transform.localScale);
+    }
+
+
+    private void OnIsAliveChanged(bool prev, bool next)
+    {
+        // Показываем/скрываем модель на всех клиентах
+        // Студент реализует самостоятельно
+        if (_visualModel != null)
+        {
+            _visualModel.SetActive(next);
+        }
+        else
+        {
+            // Альтернатива: найти MeshRenderer на себе или дочерних объектах
+            MeshRenderer[] renderers = GetComponentsInChildren<MeshRenderer>();
+            foreach (var rend in renderers)
+            {
+                rend.enabled = next;
+            }
+        }
+    }
+
 
     //  Публичные методы для чтения 
 
@@ -143,7 +220,7 @@ public class PlayerNetwork : NetworkBehaviour
     public int GetCurrentHealth() => HP.Value;
 
 
-    /// Проверка: жив ли игрок?
 
-    public bool IsAlive() => HP.Value > 0;
+
+
 }
