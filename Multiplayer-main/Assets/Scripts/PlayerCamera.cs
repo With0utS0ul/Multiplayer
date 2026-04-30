@@ -1,15 +1,15 @@
-using Unity.Netcode;
+using FishNet.Object;
 using UnityEngine;
 
 public class PlayerCamera : NetworkBehaviour
 {
     [SerializeField] private Vector3 _offset = new(0f, 8f, -6f);
-
     private Camera _cam;
 
-    public override void OnNetworkSpawn()
+    public override void OnStartNetwork()
     {
-        if (!IsOwner)
+        base.OnStartNetwork();
+        if (!base.Owner.IsLocalClient)
         {
             enabled = false;
             return;

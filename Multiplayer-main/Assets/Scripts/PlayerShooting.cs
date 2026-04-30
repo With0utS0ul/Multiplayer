@@ -1,5 +1,6 @@
-﻿using System;
-using Unity.Netcode;
+﻿using FishNet.Object;
+using FishNet.Object.Synchronizing;
+using FishNet.Connection;
 using UnityEngine;
 
 public class PlayerShooting : NetworkBehaviour
@@ -10,78 +11,49 @@ public class PlayerShooting : NetworkBehaviour
     [SerializeField] public int _maxAmmo = 10;
 
     private float _lastShotTime;
-    private int _currentAmmo;
+    public readonly SyncVar<int> CurrentAmmo = new SyncVar<int>();
+    public event System.Action<int> OnAmmoChangedUI;
 
-
-    public NetworkVariable<int> CurrentAmmo = new(
-        default,
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Server
-    );
-    // ������� ��� UI (���������� �� ���� �������� ��� ��������� ��������)
-    public event Action<int> OnAmmoChanged;
-
-
-    // IsAlive � ����� � PlayerNetwork ������������� ���������
     private PlayerNetwork _playerNetwork;
 
-    public override void OnNetworkSpawn()
+    public override void OnStartNetwork()
     {
-        _currentAmmo = _maxAmmo;
+        base.OnStartNetwork();
         _playerNetwork = GetComponent<PlayerNetwork>();
-
-        if (IsServer)
-        {
+        if (base.IsServerStarted)
             CurrentAmmo.Value = _maxAmmo;
-        }
-
-        // ������������� �� ��������� NetworkVariable
-        CurrentAmmo.OnValueChanged += OnAmmoValueChanged;
-
-        // ���� ��� ���� �������� - ����� ������� �������
-        if (IsSpawned)
-            OnAmmoValueChanged(default, CurrentAmmo.Value);
+        CurrentAmmo.OnChange += OnAmmoChanged;
+        OnAmmoChanged(CurrentAmmo.Value, CurrentAmmo.Value, false);
     }
 
-    public override void OnNetworkDespawn()
+    public override void OnStopNetwork()
     {
-        CurrentAmmo.OnValueChanged -= OnAmmoValueChanged;
+        CurrentAmmo.OnChange -= OnAmmoChanged;
     }
 
-
-    private void OnAmmoValueChanged(int previous, int current)
+    private void OnAmmoChanged(int oldVal, int newVal, bool asServer)
     {
-        OnAmmoChanged?.Invoke(current);
+        OnAmmoChangedUI?.Invoke(newVal);
     }
 
     private void Update()
     {
-        if (!IsOwner) return;
+        if (!base.Owner.IsLocalClient) return;
         if (Input.GetKeyDown(KeyCode.Space))
             ShootServerRpc(_firePoint.position, _firePoint.forward);
     }
 
     [ServerRpc]
-    private void ShootServerRpc(Vector3 pos, Vector3 dir,
-                                 ServerRpcParams rpc = default)
+    private void ShootServerRpc(Vector3 pos, Vector3 dir, NetworkConnection conn = null)
     {
-        // 1. ��� �� �����?
         if (_playerNetwork.HP.Value <= 0) return;
-
-        // 2. ���� �� �������?
-        if (_currentAmmo <= 0) return;
-
-        // 3. ������ �� �������?
+        if (CurrentAmmo.Value <= 0) return;
         if (Time.time < _lastShotTime + _cooldown) return;
 
         _lastShotTime = Time.time;
-        _currentAmmo--;
         CurrentAmmo.Value--;
 
-        var go = Instantiate(_projectilePrefab, pos + dir * 1.2f,
-                             Quaternion.LookRotation(dir));
-        var no = go.GetComponent<NetworkObject>();
-        no.SpawnWithOwnership(rpc.Receive.SenderClientId);
+        GameObject go = Instantiate(_projectilePrefab, pos + dir * 1.2f, Quaternion.LookRotation(dir));
+        base.ServerManager.Spawn(go, conn);
     }
-
 }

@@ -1,226 +1,123 @@
-﻿using Unity.Netcode;
-using Unity.Collections;
+﻿using FishNet.Object;
+using FishNet.Object.Synchronizing;
+using FishNet.Component.Transforming;
 using UnityEngine;
-using System;
-using UnityEditor.MemoryProfiler;
 using System.Collections;
-using TMPro;
-using Unity.Netcode.Components;
 
 public class PlayerNetwork : NetworkBehaviour
 {
-    // Сетевые переменные 
     [SerializeField] private GameObject _visualModel;
 
-    /// Никнейм: читают все, пишет только сервер.
-    /// FixedString32Bytes — сетевой-сериализуемый тип для строк.
+    public readonly SyncVar<string> Nickname = new SyncVar<string>();
+    public readonly SyncVar<int> HP = new SyncVar<int>(100);
+    public readonly SyncVar<bool> IsAlive = new SyncVar<bool>(true);
 
-    public readonly NetworkVariable<FixedString32Bytes> Nickname = new(
-        default,
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Server
-    );
+    // UI events (invoked from SyncVar change handlers)
+    public event System.Action<string> OnNicknameChangedUI;
+    public event System.Action<int> OnHealthChangedUI;
+    public event System.Action<bool> OnIsAliveChangedUI;
 
-
-    /// Здоровье: читают все, пишет только сервер.
-
-    public readonly NetworkVariable<int> HP = new(
-        100,
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Server
-    );
-
-
-    public NetworkVariable<bool> IsAlive = new(
-        true,
-        NetworkVariableReadPermission.Everyone,
-        NetworkVariableWritePermission.Server
-    );
-
-    // События для UI
-
-
-    /// Вызывается на всех клиентах при изменении никнейма.
-
-    public event Action<string> OnNicknameChanged;
-
-
-    /// Вызывается на всех клиентах при изменении здоровья.
-
-    public event Action<int> OnHealthChanged;
-
-    // Инициализация 
-    public override void OnNetworkSpawn()
+    public override void OnStartNetwork()
     {
-        // Подписка на изменения сетевых переменных
-        Nickname.OnValueChanged += OnNicknameValueChanged;
-        HP.OnValueChanged += OnHealthValueChanged;
-        IsAlive.OnValueChanged += OnIsAliveChanged;
+        base.OnStartNetwork();
 
-        // Если объект уже заспавнен — сразу уведомляем подписчиков
-        if (IsSpawned)
-        {
-            OnNicknameValueChanged(default, Nickname.Value);
-            OnHealthValueChanged(100, HP.Value);
-        }
+        // Subscribe to SyncVar changes
+        Nickname.OnChange += OnNicknameChanged;
+        HP.OnChange += OnHealthChanged;
+        IsAlive.OnChange += OnIsAliveChanged;
 
-        // Только локальный владелец отправляет свой ник на сервер
-        if (IsOwner)
-        {
+        // Only the local client sends its nickname
+        if (base.Owner.IsLocalClient)
             SubmitNicknameServerRpc(ConnectionUI.PlayerNickname);
-        }
+
+        // Manually invoke initial UI update (value may already be set)
+        OnNicknameChanged(Nickname.Value, Nickname.Value, false);
+        OnHealthChanged(HP.Value, HP.Value, false);
+        OnIsAliveChanged(IsAlive.Value, IsAlive.Value, false);
     }
 
-    public override void OnNetworkDespawn()
+    public override void OnStopNetwork()
     {
-        // Отписка от событий для предотвращения утечек памяти
-        Nickname.OnValueChanged -= OnNicknameValueChanged;
-        HP.OnValueChanged -= OnHealthValueChanged;
-        IsAlive.OnValueChanged -= OnIsAliveChanged;
-
+        Nickname.OnChange -= OnNicknameChanged;
+        HP.OnChange -= OnHealthChanged;
+        IsAlive.OnChange -= OnIsAliveChanged;
     }
-
-    //  ServerRpc: отправка ника на сервер 
-
-
-    /// Клиент вызывает этот метод, чтобы передать свой никнейм серверу.
-    /// RequireOwnership = false позволяет вызывать даже до полного спавна.
 
     [ServerRpc(RequireOwnership = false)]
     private void SubmitNicknameServerRpc(string nickname)
     {
-        // ⚠️ Сервер — единственный источник истины: нормализуем входные данные
-        string rawValue = nickname ?? string.Empty;
-        string safeValue = string.IsNullOrWhiteSpace(rawValue)
-            ? $"Player_{OwnerClientId}"
-            : rawValue.Trim();
-
-        // Ограничиваем длину (на случай, если клиент обойдёт проверку)
-        if (safeValue.Length > 32)
-            safeValue = safeValue.Substring(0, 32);
-
-        // Записываем в NetworkVariable — изменение автоматически уйдёт всем клиентам
+        string safeValue = string.IsNullOrWhiteSpace(nickname)
+            ? $"Player_{Owner.ClientId}"
+            : nickname.Trim();
+        if (safeValue.Length > 32) safeValue = safeValue.Substring(0, 32);
         Nickname.Value = safeValue;
-
-        Debug.Log($"[Server] Player {OwnerClientId} registered as \"{safeValue}\"");
+        Debug.Log($"[Server] Player {Owner.ClientId} -> \"{safeValue}\"");
     }
 
-    // Обработчики изменений 
-
-    private void OnNicknameValueChanged(FixedString32Bytes previous, FixedString32Bytes current)
+    private void OnNicknameChanged(string oldVal, string newVal, bool asServer)
     {
-        // Конвертируем FixedString32Bytes → string для удобства
-        string currentString = current.ToString();
-        OnNicknameChanged?.Invoke(currentString);
-
-        // Обновляем имя объекта в редакторе для удобной отладки
-        if (Application.isEditor && !string.IsNullOrEmpty(currentString))
-            gameObject.name = $"[{currentString}] Player";
+        OnNicknameChangedUI?.Invoke(newVal);
+        if (Application.isEditor && !string.IsNullOrEmpty(newVal))
+            gameObject.name = $"[{newVal}] Player";
     }
 
-    private void OnHealthValueChanged(int previous, int current)
+    private void OnHealthChanged(int oldVal, int newVal, bool asServer)
     {
-        if (!IsServer) return;
-        OnHealthChanged?.Invoke(current);
-
-        // Логика при смерти (срабатывает только при переходе через 0)
-        if (current <= 0 && IsAlive.Value)
+        OnHealthChangedUI?.Invoke(newVal);
+        if (asServer && newVal <= 0 && IsAlive.Value)
         {
-            if (current <= 0 && IsAlive.Value)
-            {
-                // Прямой вызов вместо ServerRpc (мы уже на сервере)
-                Debug.Log($"[Server] Player {Nickname.Value} (ID: {OwnerClientId}) defeated!");
-                if (HP.Value > 0) HP.Value = 0; // страховка
-
-                IsAlive.Value = false;
-                StartCoroutine(RespawnRoutine());
-            }
+            Debug.Log($"[Server] {Nickname.Value} died");
+            IsAlive.Value = false;
+            StartCoroutine(RespawnRoutine());
         }
     }
-
 
     private IEnumerator RespawnRoutine()
     {
-        if (!IsServer) yield break;
-
+        if (!base.IsServerStarted) yield break;
         yield return new WaitForSeconds(3f);
-
         Transform spawnPoint = SpawnManager.Instance?.GetRandomSpawnPoint();
-        if (spawnPoint == null)
-        {
-            Debug.LogError("No spawn point available!");
-            yield break;
-        }
+        if (spawnPoint == null) yield break;
 
-        // Отправляем всем клиентам (или только владельцу) команду на телепорт
-        TeleportClientRpc(spawnPoint.position, spawnPoint.rotation);
-
-        // Также перемещаем на сервере (чтобы серверная позиция совпала)
+        TeleportObserversRpc(spawnPoint.position, spawnPoint.rotation);
         transform.position = spawnPoint.position;
         transform.rotation = spawnPoint.rotation;
 
         HP.Value = 100;
         if (TryGetComponent(out PlayerShooting shooting))
             shooting.CurrentAmmo.Value = shooting._maxAmmo;
-
         IsAlive.Value = true;
     }
 
-    [ClientRpc]
-    private void TeleportClientRpc(Vector3 position, Quaternion rotation)
+    [ObserversRpc]
+    private void TeleportObserversRpc(Vector3 position, Quaternion rotation)
     {
-        // Выполняется на всех клиентах, включая хоста (но хост уже изменил позицию выше)
-        if (!IsOwner) return; // только владелец должен перемещать свой объект
-
-        // Отключаем CharacterController на время телепорта, чтобы избежать конфликтов
+        if (!base.Owner.IsLocalClient) return;
         var cc = GetComponent<CharacterController>();
         if (cc != null) cc.enabled = false;
 
+        // Apply the new transform values first
         transform.position = position;
         transform.rotation = rotation;
 
         if (cc != null) cc.enabled = true;
-
-        // Если есть NetworkTransform, можно также уведомить его (необязательно)
-        var nt = GetComponent<Unity.Netcode.Components.NetworkTransform>();
-        if (nt != null) nt.Teleport(position, rotation, transform.localScale);
+        var nt = GetComponent<FishNet.Component.Transforming.NetworkTransform>();
+        if (nt != null)
+        {
+            // Teleport without arguments – the NetworkTransform uses the current transform values
+            nt.Teleport();
+        }
     }
 
-
-    private void OnIsAliveChanged(bool prev, bool next)
+    private void OnIsAliveChanged(bool oldVal, bool newVal, bool asServer)
     {
-        // Показываем/скрываем модель на всех клиентах
-        // Студент реализует самостоятельно
+        OnIsAliveChangedUI?.Invoke(newVal);
         if (_visualModel != null)
-        {
-            _visualModel.SetActive(next);
-        }
+            _visualModel.SetActive(newVal);
         else
         {
-            // Альтернатива: найти MeshRenderer на себе или дочерних объектах
-            MeshRenderer[] renderers = GetComponentsInChildren<MeshRenderer>();
-            foreach (var rend in renderers)
-            {
-                rend.enabled = next;
-            }
+            var renderers = GetComponentsInChildren<MeshRenderer>();
+            foreach (var r in renderers) r.enabled = newVal;
         }
     }
-
-
-    //  Публичные методы для чтения 
-
-
-    /// Безопасное получение никнейма (работает с любого клиента).
-
-    public string GetNickname() => Nickname.Value.ToString();
-
-
-    /// Безопасное получение текущего здоровья (работает с любого клиента).
-
-    public int GetCurrentHealth() => HP.Value;
-
-
-
-
-
 }

@@ -1,4 +1,4 @@
-using Unity.Netcode;
+using FishNet.Object;
 using UnityEngine;
 
 [RequireComponent(typeof(CharacterController))]
@@ -17,23 +17,19 @@ public class PlayerMovement : NetworkBehaviour
         _playerNetwork = GetComponent<PlayerNetwork>();
     }
 
-
     private void Update()
     {
-        if (!IsOwner) return;
-
+        if (!base.Owner.IsLocalClient) return;
         if (_playerNetwork != null && !_playerNetwork.IsAlive.Value) return;
 
         float h = Input.GetAxis("Horizontal");
         float v = Input.GetAxis("Vertical");
-
         Vector3 move = new Vector3(h, 0f, v).normalized * _speed;
 
         _verticalVelocity += _gravity * Time.deltaTime;
         move.y = _verticalVelocity;
 
         _cc.Move(move * Time.deltaTime);
-
         if (_cc.isGrounded) _verticalVelocity = 0f;
     }
 }

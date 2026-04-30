@@ -1,7 +1,8 @@
-﻿using Unity.Netcode;
+﻿using FishNet.Managing;
+using FishNet.Object;
 using UnityEngine;
 using System.Collections;
-
+using FishNet;
 
 public class PickupManager : MonoBehaviour
 {
@@ -11,8 +12,7 @@ public class PickupManager : MonoBehaviour
 
     private void Start()
     {
-        // �������� ������� ������ �� �������/�����
-        if (!NetworkManager.Singleton.IsServer) return;
+        if (!InstanceFinder.IsServerStarted) return;
         SpawnAll();
     }
 
@@ -35,8 +35,8 @@ public class PickupManager : MonoBehaviour
 
     private void SpawnPickup(Vector3 position)
     {
-        var go = Instantiate(_healthPickupPrefab, position, Quaternion.identity);
+        GameObject go = Instantiate(_healthPickupPrefab, position, Quaternion.identity);
         go.GetComponent<HealthPickup>().Init(this);
-        go.GetComponent<NetworkObject>().Spawn();
+        InstanceFinder.ServerManager.Spawn(go);
     }
 }

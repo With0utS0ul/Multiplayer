@@ -1,7 +1,9 @@
-﻿using UnityEngine;
+﻿using FishNet.Managing;
+using FishNet.Transporting;
+using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using Unity.Netcode;
+using FishNet;
 
 public class ConnectionUI : MonoBehaviour
 {
@@ -11,98 +13,64 @@ public class ConnectionUI : MonoBehaviour
     [SerializeField] private Button _joinButton;
     [SerializeField] private TMP_InputField _nicknameInput;
 
-    // ��������� ��� �������� �� ��������� �������� ������� ������.
     public static string PlayerNickname { get; private set; } = "Player";
+
+    private NetworkManager _netManager;
 
     private void Awake()
     {
-        // ��������� ������� ������������ �����������
-        if (_statusText == null)
-            Debug.LogWarning("[ConnectionUI] StatusText not assigned!");
+        _netManager = InstanceFinder.NetworkManager;
+        if (_netManager == null)
+        {
+            Debug.LogError("FishNet NetworkManager not found!");
+            return;
+        }
+        _netManager.ClientManager.OnClientConnectionState += OnClientConnectionState;
     }
 
     private void OnEnable()
     {
-        // Subscribe to network events
-        if (NetworkManager.Singleton != null)
-        {
-            NetworkManager.Singleton.OnServerStarted += OnServerStarted;
-            NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
-            NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnected;
-        }
-
-        // Subscribe to button clicks
-        if (_hostButton != null)
-            _hostButton.onClick.AddListener(OnHostConnected);
-        if (_joinButton != null)
-            _joinButton.onClick.AddListener(OnJoinClient);
+        if (_hostButton != null) _hostButton.onClick.AddListener(OnHostClicked);
+        if (_joinButton != null) _joinButton.onClick.AddListener(OnJoinClicked);
     }
 
     private void OnDisable()
     {
-        // Unsubscribe from network events
-        if (NetworkManager.Singleton != null)
-        {
-            NetworkManager.Singleton.OnServerStarted -= OnServerStarted;
-            NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
-            NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientDisconnected;
-        }
-
-        // Unsubscribe from button clicks
-        if (_hostButton != null)
-            _hostButton.onClick.RemoveListener(OnHostConnected);
-        if (_joinButton != null)
-            _joinButton.onClick.RemoveListener(OnJoinClient);
+        if (_hostButton != null) _hostButton.onClick.RemoveListener(OnHostClicked);
+        if (_joinButton != null) _joinButton.onClick.RemoveListener(OnJoinClicked);
     }
 
-    // ������� ������� 
-
-    private void OnServerStarted()
+    private void OnDestroy()
     {
-        UpdateStatus("Host started");
+        if (_netManager != null && _netManager.ClientManager != null)
+            _netManager.ClientManager.OnClientConnectionState -= OnClientConnectionState;
     }
 
-    private void OnClientConnected(ulong clientId)
+    private void OnClientConnectionState(ClientConnectionStateArgs args)
     {
-        if (NetworkManager.Singleton.IsClient && clientId == NetworkManager.Singleton.LocalClientId)
-        {
+        if (args.ConnectionState == LocalConnectionState.Started)
             UpdateStatus($"Connected as \"{PlayerNickname}\"");
-        }
-        else if (NetworkManager.Singleton.IsServer)
-        {
-            UpdateStatus($"Client {clientId} connected");
-        }
-    }
-
-    private void OnClientDisconnected(ulong clientId)
-    {
-        if (clientId == NetworkManager.Singleton.LocalClientId)
-        {
+        else if (args.ConnectionState == LocalConnectionState.Stopped)
             UpdateStatus("Disconnected");
-        }
     }
 
-    // ����������� ������ 
-
-    private void OnHostConnected()
+    private void OnHostClicked()
     {
         SaveNickname();
-        NetworkManager.Singleton.StartHost();
+        _netManager.ServerManager.StartConnection();
+        _netManager.ClientManager.StartConnection();
         UpdateStatus($"Hosting as \"{PlayerNickname}\"...");
     }
 
-    private void OnJoinClient()
+    private void OnJoinClicked()
     {
         SaveNickname();
-        NetworkManager.Singleton.StartClient();
+        _netManager.ClientManager.StartConnection();
         UpdateStatus($"Connecting as \"{PlayerNickname}\"...");
     }
 
-    //  ��������������� ������ 
-
     private void SaveNickname()
     {
-        // ����������� ����, ����� ������ �� ������� ������ ������.
         string rawValue = _nicknameInput != null ? _nicknameInput.text : string.Empty;
         PlayerNickname = string.IsNullOrWhiteSpace(rawValue) ? "Player" : rawValue.Trim();
     }
@@ -114,24 +82,12 @@ public class ConnectionUI : MonoBehaviour
         Debug.Log($"[ConnectionUI] {message}");
     }
 
-    //  ��������� ������ ��� ������� ������� 
-
-
-    // ���������� �� ������ �������� ��� ������� ����� � ����������� ��������
-    public void StartAsHost() => OnHostConnected();
-
-
-    // ���������� �� ������ �������� ��� ����������� � ����� � ����������� ��������
-
-    public void StartAsClient() => OnJoinClient();
-
-
-    // ��������� ������� ������ ������� (���� ����� �������� ����� �������������)
-
+    // Public methods for external calls
+    public void StartAsHost() => OnHostClicked();
+    public void StartAsClient() => OnJoinClicked();
     public void UpdateNickname(string newNickname)
     {
         PlayerNickname = string.IsNullOrWhiteSpace(newNickname) ? "Player" : newNickname.Trim();
-        if (_nicknameInput != null)
-            _nicknameInput.text = PlayerNickname;
+        if (_nicknameInput != null) _nicknameInput.text = PlayerNickname;
     }
 }
