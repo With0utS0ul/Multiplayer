@@ -82,7 +82,6 @@ public class PlayerView : NetworkBehaviour
 
     private void OnNicknameChanged(string nick)
     {
-        if (_worldNicknameText != null) _worldNicknameText.text = nick;
         if (_screenNicknameText != null) _screenNicknameText.text = nick;
     }
 

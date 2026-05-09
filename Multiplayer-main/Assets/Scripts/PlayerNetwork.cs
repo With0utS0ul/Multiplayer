@@ -3,16 +3,17 @@ using FishNet.Object.Synchronizing;
 using FishNet.Component.Transforming;
 using UnityEngine;
 using System.Collections;
+using TMPro;
 
 public class PlayerNetwork : NetworkBehaviour
 {
     [SerializeField] private GameObject _visualModel;
+    [SerializeField] private TMP_Text _worldNicknameText;
 
     public readonly SyncVar<string> Nickname = new SyncVar<string>();
     public readonly SyncVar<int> HP = new SyncVar<int>(100);
     public readonly SyncVar<bool> IsAlive = new SyncVar<bool>(true);
 
-    // UI events (invoked from SyncVar change handlers)
     public event System.Action<string> OnNicknameChangedUI;
     public event System.Action<int> OnHealthChangedUI;
     public event System.Action<bool> OnIsAliveChangedUI;
@@ -21,19 +22,27 @@ public class PlayerNetwork : NetworkBehaviour
     {
         base.OnStartNetwork();
 
-        // Subscribe to SyncVar changes
         Nickname.OnChange += OnNicknameChanged;
         HP.OnChange += OnHealthChanged;
         IsAlive.OnChange += OnIsAliveChanged;
 
-        // Only the local client sends its nickname
-        if (base.Owner.IsLocalClient)
-            SubmitNicknameServerRpc(ConnectionUI.PlayerNickname);
+        UpdateNicknameUI(Nickname.Value); // первичное обновление (значение может быть пустым)
 
-        // Manually invoke initial UI update (value may already be set)
-        OnNicknameChanged(Nickname.Value, Nickname.Value, false);
+        if (base.Owner.IsLocalClient)
+        {
+            // Искусственная задержка, чтобы клиент успел инициализироваться
+            StartCoroutine(DelayedNicknameSubmission());
+        }
+
         OnHealthChanged(HP.Value, HP.Value, false);
         OnIsAliveChanged(IsAlive.Value, IsAlive.Value, false);
+    }
+
+    private IEnumerator DelayedNicknameSubmission()
+    {
+        yield return new WaitForSeconds(0.1f); // ждём 0.1 секунды
+        if (base.Owner.IsLocalClient)
+            SubmitNicknameServerRpc(ConnectionUI.PlayerNickname);
     }
 
     public override void OnStopNetwork()
@@ -51,14 +60,23 @@ public class PlayerNetwork : NetworkBehaviour
             : nickname.Trim();
         if (safeValue.Length > 32) safeValue = safeValue.Substring(0, 32);
         Nickname.Value = safeValue;
-        Debug.Log($"[Server] Player {Owner.ClientId} -> \"{safeValue}\"");
     }
 
     private void OnNicknameChanged(string oldVal, string newVal, bool asServer)
     {
-        OnNicknameChangedUI?.Invoke(newVal);
-        if (Application.isEditor && !string.IsNullOrEmpty(newVal))
-            gameObject.name = $"[{newVal}] Player";
+        UpdateNicknameUI(newVal);
+    }
+
+    private void UpdateNicknameUI(string nickname)
+    {
+        OnNicknameChangedUI?.Invoke(nickname);
+        if (_worldNicknameText != null)
+            _worldNicknameText.text = nickname;
+        else
+            Debug.LogWarning("World nickname text not assigned in PlayerNetwork!");
+
+        if (Application.isEditor && !string.IsNullOrEmpty(nickname))
+            gameObject.name = $"[{nickname}] Player";
     }
 
     private void OnHealthChanged(int oldVal, int newVal, bool asServer)
@@ -95,18 +113,11 @@ public class PlayerNetwork : NetworkBehaviour
         if (!base.Owner.IsLocalClient) return;
         var cc = GetComponent<CharacterController>();
         if (cc != null) cc.enabled = false;
-
-        // Apply the new transform values first
         transform.position = position;
         transform.rotation = rotation;
-
         if (cc != null) cc.enabled = true;
-        var nt = GetComponent<FishNet.Component.Transforming.NetworkTransform>();
-        if (nt != null)
-        {
-            // Teleport without arguments – the NetworkTransform uses the current transform values
-            nt.Teleport();
-        }
+        var nt = GetComponent<NetworkTransform>();
+        if (nt != null) nt.Teleport();
     }
 
     private void OnIsAliveChanged(bool oldVal, bool newVal, bool asServer)
