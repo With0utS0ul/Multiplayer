@@ -1,6 +1,7 @@
 using TMPro;
 using FishNet.Object;
 using UnityEngine;
+using System.Collections;
 
 public class PlayerView : NetworkBehaviour
 {
@@ -122,7 +123,7 @@ public class PlayerView : NetworkBehaviour
             _screenRespawnTimerText.gameObject.SetActive(false);
     }
 
-    private System.Collections.IEnumerator RespawnTimerCoroutine()
+    private IEnumerator RespawnTimerCoroutine()
     {
         float timer = 3f;
         while (timer > 0f)
@@ -130,8 +131,9 @@ public class PlayerView : NetworkBehaviour
             if (_screenRespawnTimerText != null)
             {
                 _screenRespawnTimerText.gameObject.SetActive(true);
-                _screenRespawnTimerText.text = $"Respawn in {timer:F1}";
+                _screenRespawnTimerText.text = $"Respawning in {timer:F1}";
             }
+            Debug.Log($"[RespawnTimer] timer = {timer}"); // для отладки
             timer -= Time.deltaTime;
             yield return null;
         }

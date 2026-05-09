@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 7378031047952831312}
   - component: {fileID: 798436403010734944}
   - component: {fileID: 890001255789856909}
-  - component: {fileID: -8113209439811555599}
+  - component: {fileID: 7661082651403115541}
   m_Layer: 0
   m_Name: Projectile
   m_TagString: Untagged
@@ -109,7 +109,7 @@ MonoBehaviour:
   <PredictedSpawn>k__BackingField: {fileID: 0}
   <PredictedOwner>k__BackingField: {fileID: 0}
   NetworkBehaviours:
-  - {fileID: -8113209439811555599}
+  - {fileID: 0}
   InitializedParentNetworkBehaviour: {fileID: 0}
   InitializedNestedNetworkObjects: []
   RuntimeParentNetworkBehaviour: {fileID: 0}
@@ -120,7 +120,7 @@ MonoBehaviour:
   _initializeOrder: 0
   _preventDespawnOnDisconnect: 0
   _defaultDespawnType: 0
-  _initializedTimestamp: -8584240387408322879
+  _initializedTimestamp: -8584233456941678360
   _localLevelOfDetailCalculationType: 0
   _useLevelOfDetail: 0
   _useRootLevelOfDetail: 1
@@ -196,7 +196,7 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
---- !u!114 &-8113209439811555599
+--- !u!114 &7661082651403115541
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -205,9 +205,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 6124459287557917134}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8a6a39c46bf52104ba8efe3100bce3f7, type: 3}
+  m_Script: {fileID: 11500000, guid: b06defe1a5624b240ad1d71e8a39e463, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _componentIndexCache: 0
+  _componentIndexCache: 255
   _addedNetworkObject: {fileID: 7378031047952831312}
-  _networkObjectCache: {fileID: 7378031047952831312}
+  _networkObjectCache: {fileID: 0}
+  _speed: 18
+  _damage: 20

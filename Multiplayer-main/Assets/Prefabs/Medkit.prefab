@@ -13,7 +13,8 @@ GameObject:
   - component: {fileID: 1840289053232626572}
   - component: {fileID: 6973940576435827086}
   - component: {fileID: 4018432082960458833}
-  - component: {fileID: -1656217533463024181}
+  - component: {fileID: -3969132024971669958}
+  - component: {fileID: -1815494565782673675}
   m_Layer: 0
   m_Name: Medkit
   m_TagString: Untagged
@@ -108,7 +109,8 @@ MonoBehaviour:
   <PredictedSpawn>k__BackingField: {fileID: 0}
   <PredictedOwner>k__BackingField: {fileID: 0}
   NetworkBehaviours:
-  - {fileID: -1656217533463024181}
+  - {fileID: -3969132024971669958}
+  - {fileID: -1815494565782673675}
   InitializedParentNetworkBehaviour: {fileID: 0}
   InitializedNestedNetworkObjects: []
   RuntimeParentNetworkBehaviour: {fileID: 0}
@@ -119,7 +121,7 @@ MonoBehaviour:
   _initializeOrder: 0
   _preventDespawnOnDisconnect: 0
   _defaultDespawnType: 0
-  _initializedTimestamp: -8584240387408322879
+  _initializedTimestamp: -8584233188632405939
   _localLevelOfDetailCalculationType: 0
   _useLevelOfDetail: 0
   _useRootLevelOfDetail: 1
@@ -168,7 +170,7 @@ SphereCollider:
   serializedVersion: 3
   m_Radius: 0.9340037
   m_Center: {x: 0, y: 0, z: -0.4340037}
---- !u!114 &-1656217533463024181
+--- !u!114 &-3969132024971669958
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -177,9 +179,30 @@ MonoBehaviour:
   m_GameObject: {fileID: 9209752531523807157}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8a6a39c46bf52104ba8efe3100bce3f7, type: 3}
+  m_Script: {fileID: 11500000, guid: 3dc97a8b9e628044e83004c93095c14d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   _componentIndexCache: 0
   _addedNetworkObject: {fileID: 6973940576435827086}
   _networkObjectCache: {fileID: 6973940576435827086}
+  MaximumSimultaneousHits: 16
+  AdditionalSize: 0.1
+  Layers:
+    serializedVersion: 2
+    m_Bits: 0
+--- !u!114 &-1815494565782673675
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9209752531523807157}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a5a0476a9a95a744988c6b9e83d56d39, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _componentIndexCache: 1
+  _addedNetworkObject: {fileID: 6973940576435827086}
+  _networkObjectCache: {fileID: 6973940576435827086}
+  _healAmount: 40
