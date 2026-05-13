@@ -33,9 +33,8 @@ public class PlayerCombat : NetworkBehaviour
         if (!base.Owner.IsLocalClient || _playerNetwork == null) return;
         if (FindTarget(out PlayerNetwork target))
         {
-            // NetworkObject.ObjectId is uint
-            int targetId = target.NetworkObject.ObjectId;
-            DealDamageServerRpc(targetId, _damage);
+            uint targetId = (uint)target.NetworkObject.ObjectId;
+            DealDamageServerRpc((uint)targetId, _damage);
         }
     }
 
@@ -46,19 +45,24 @@ public class PlayerCombat : NetworkBehaviour
         if (_playerCamera == null) return false;
 
         Ray ray = _playerCamera.ScreenPointToRay(Input.mousePosition);
-        if (Physics.Raycast(ray, out RaycastHit hit, _attackRange, _targetLayer))
+        if (Physics.Raycast(ray, out RaycastHit hit, 100f, _targetLayer))
         {
             target = hit.collider.GetComponentInParent<PlayerNetwork>();
-            return target != null && target.IsSpawned;
+            if (target != null && target.IsSpawned)
+            {
+                // Дополнительная проверка: дистанция от игрока до цели
+                float distanceToTarget = Vector3.Distance(transform.position, target.transform.position);
+                return distanceToTarget <= _attackRange;
+            }
         }
         return false;
     }
 
     [ServerRpc]
-    private void DealDamageServerRpc(int targetObjectId, int damage)
+    private void DealDamageServerRpc(uint targetObjectId, int damage)  // параметр uint
     {
         if (!base.IsServerStarted) return;
-        if (!InstanceFinder.ServerManager.Objects.Spawned.TryGetValue(targetObjectId, out var targetObj))
+        if (!InstanceFinder.ServerManager.Objects.Spawned.TryGetValue((int)targetObjectId, out var targetObj))
         {
             Debug.LogWarning($"[Server] Target {targetObjectId} not found!");
             return;

@@ -220,7 +220,7 @@ MonoBehaviour:
   _initializeOrder: 0
   _preventDespawnOnDisconnect: 0
   _defaultDespawnType: 0
-  _initializedTimestamp: -8584232735498846253
+  _initializedTimestamp: -8584228932527010769
   _localLevelOfDetailCalculationType: 0
   _useLevelOfDetail: 0
   _useRootLevelOfDetail: 1
@@ -370,7 +370,7 @@ MonoBehaviour:
   _attackRange: 3
   _targetLayer:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 64
   _attackKey: 102
   _playerCamera: {fileID: 0}
   _playerNetwork: {fileID: 639314865615998470}
