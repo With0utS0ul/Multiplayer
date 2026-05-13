@@ -818,6 +818,7 @@ PlayerSettings:
   webGLCloseOnQuit: 0
   webWasm2023: 0
   scriptingDefineSymbols:
+    Server: FISHNET;FISHNET_V4
     Standalone: FISHNET;FISHNET_V4
   additionalCompilerArguments: {}
   platformArchitecture: {}
@@ -932,11 +933,11 @@ PlayerSettings:
   captureStartupLogs: {}
   activeInputHandler: 2
   windowsGamepadBackendHint: 0
-  cloudProjectId: 0e207b40-2398-4cf1-a069-4af6fbc6594e
+  cloudProjectId: 3c3747f2-c612-4e4d-8066-f31a800c4a7e
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
   projectName: Multiplayer
-  organizationId: aleksandrovnikita2005
+  organizationId: wit0uts0ul
   cloudEnabled: 0
   legacyClampBlendShapeWeights: 0
   hmiLoadingImage: {fileID: 0}
