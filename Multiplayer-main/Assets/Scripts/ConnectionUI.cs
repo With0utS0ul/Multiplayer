@@ -12,8 +12,12 @@ public class ConnectionUI : MonoBehaviour
     [SerializeField] private Button _hostButton;
     [SerializeField] private Button _joinButton;
     [SerializeField] private TMP_InputField _nicknameInput;
+    [SerializeField] private TMP_InputField _ipInput; // <--- Поле для ввода IP
 
-    public static string PlayerNickname { get; private set; } = "Player";
+    [Header("Connection Settings")]
+    [SerializeField] private ushort serverPort = 7770; // <--- Порт сервера
+
+    public static string PlayerNickname { get; private set; } = "Player ";
 
     private NetworkManager _netManager;
 
@@ -57,6 +61,7 @@ public class ConnectionUI : MonoBehaviour
     private void OnHostClicked()
     {
         SaveNickname();
+        // Хост не требует указания IP, запускает локальный сервер + клиент
         _netManager.ServerManager.StartConnection();
         _netManager.ClientManager.StartConnection();
         UpdateStatus($"Hosting as \"{PlayerNickname}\"...");
@@ -65,14 +70,23 @@ public class ConnectionUI : MonoBehaviour
     private void OnJoinClicked()
     {
         SaveNickname();
-        _netManager.ClientManager.StartConnection();
-        UpdateStatus($"Connecting as \"{PlayerNickname}\"...");
+
+        // Берём IP из поля ввода, если пусто → localhost
+        string targetIp = (_ipInput != null && !string.IsNullOrWhiteSpace(_ipInput.text))
+            ? _ipInput.text.Trim()
+            : "127.0.0.1";
+
+        Debug.Log($"[ConnectionUI] Attempting connection to {targetIp}:{serverPort}...");
+
+        // Передаём IP и порт напрямую в ClientManager. Tugboat автоматически использует их.
+        _netManager.ClientManager.StartConnection(targetIp, serverPort);
+        UpdateStatus($"Connecting to {targetIp} as \"{PlayerNickname}\"...");
     }
 
     private void SaveNickname()
     {
         string rawValue = _nicknameInput != null ? _nicknameInput.text : string.Empty;
-        PlayerNickname = string.IsNullOrWhiteSpace(rawValue) ? "Player" : rawValue.Trim();
+        PlayerNickname = string.IsNullOrWhiteSpace(rawValue) ? "Player " : rawValue.Trim();
     }
 
     private void UpdateStatus(string message)
@@ -85,9 +99,10 @@ public class ConnectionUI : MonoBehaviour
     // Public methods for external calls
     public void StartAsHost() => OnHostClicked();
     public void StartAsClient() => OnJoinClicked();
+
     public void UpdateNickname(string newNickname)
     {
-        PlayerNickname = string.IsNullOrWhiteSpace(newNickname) ? "Player" : newNickname.Trim();
+        PlayerNickname = string.IsNullOrWhiteSpace(newNickname) ? "Player " : newNickname.Trim();
         if (_nicknameInput != null) _nicknameInput.text = PlayerNickname;
     }
 }

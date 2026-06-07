@@ -6,8 +6,6 @@ public class NetworkServerStarter : MonoBehaviour
 {
     private void Start()
     {
-        // Эта директива C# говорит компилятору включить код внутри неё
-        // ТОЛЬКО для сборок типа "Dedicated Server".
 #if UNITY_SERVER
         Debug.Log("=== SERVER BUILD: Attempting to start server ===");
         NetworkManager manager = GetComponent<NetworkManager>();

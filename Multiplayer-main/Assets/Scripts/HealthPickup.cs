@@ -8,7 +8,7 @@ public class HealthPickup : NetworkBehaviour
     private PickupManager _manager;
     private Vector3 _spawnPosition;
     private NetworkTrigger _networkTrigger;
-    private bool _isUsed = false; // Флаг, чтобы аптечка не лечила дважды
+    private bool _isUsed = false;
 
     private void Awake()
     {
@@ -22,9 +22,7 @@ public class HealthPickup : NetworkBehaviour
 
     private void HandleTriggerEnter(Collider other, uint clientId)
     {
-        // Только сервер обрабатывает лечение
         if (!base.IsServerStarted) return;
-        // Если аптечка уже использована, игнорируем
         if (_isUsed) return;
 
         ApplyHeal(other);
@@ -40,7 +38,7 @@ public class HealthPickup : NetworkBehaviour
         player.HP.Value = Mathf.Min(100, player.HP.Value + _healAmount);
         Debug.Log($"Player healed! New HP: {player.HP.Value}");
 
-        _isUsed = true; // Помечаем как использованную
+        _isUsed = true;
         _manager.OnPickedUp(_spawnPosition);
         base.Despawn(DespawnType.Destroy);
     }

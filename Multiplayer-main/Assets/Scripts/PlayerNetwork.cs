@@ -26,11 +26,10 @@ public class PlayerNetwork : NetworkBehaviour
         HP.OnChange += OnHealthChanged;
         IsAlive.OnChange += OnIsAliveChanged;
 
-        UpdateNicknameUI(Nickname.Value); // первичное обновление (значение может быть пустым)
+        UpdateNicknameUI(Nickname.Value);
 
         if (base.Owner.IsLocalClient)
         {
-            // Искусственная задержка, чтобы клиент успел инициализироваться
             StartCoroutine(DelayedNicknameSubmission());
         }
 
@@ -40,7 +39,7 @@ public class PlayerNetwork : NetworkBehaviour
 
     private IEnumerator DelayedNicknameSubmission()
     {
-        yield return new WaitForSeconds(0.1f); // ждём 0.1 секунды
+        yield return new WaitForSeconds(0.1f);
         if (base.Owner.IsLocalClient)
             SubmitNicknameServerRpc(ConnectionUI.PlayerNickname);
     }
@@ -98,9 +97,6 @@ public class PlayerNetwork : NetworkBehaviour
         if (spawnPoint == null) yield break;
 
         TeleportObserversRpc(spawnPoint.position, spawnPoint.rotation);
-        transform.position = spawnPoint.position;
-        transform.rotation = spawnPoint.rotation;
-
         HP.Value = 100;
         if (TryGetComponent(out PlayerShooting shooting))
             shooting.CurrentAmmo.Value = shooting._maxAmmo;
@@ -110,7 +106,6 @@ public class PlayerNetwork : NetworkBehaviour
     [ObserversRpc]
     private void TeleportObserversRpc(Vector3 position, Quaternion rotation)
     {
-        if (!base.Owner.IsLocalClient) return;
         var cc = GetComponent<CharacterController>();
         if (cc != null) cc.enabled = false;
         transform.position = position;

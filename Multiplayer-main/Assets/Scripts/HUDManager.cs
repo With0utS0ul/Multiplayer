@@ -1,4 +1,3 @@
-// HUDManager.cs Ц повесить на любой объект сцены (например, Canvas)
 using TMPro;
 using UnityEngine;
 
@@ -17,7 +16,7 @@ public class HUDManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
-            DontDestroyOnLoad(gameObject); // чтобы не исчезал при смене сцены
+            DontDestroyOnLoad(gameObject);
         }
         else
         {

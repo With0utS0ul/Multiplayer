@@ -220,7 +220,7 @@ MonoBehaviour:
   _initializeOrder: 0
   _preventDespawnOnDisconnect: 0
   _defaultDespawnType: 0
-  _initializedTimestamp: -8584228932527010769
+  _initializedTimestamp: -8584228591806458575
   _localLevelOfDetailCalculationType: 0
   _useLevelOfDetail: 0
   _useRootLevelOfDetail: 1
@@ -313,7 +313,7 @@ MonoBehaviour:
   _networkObjectCache: {fileID: 7755518185000146785}
   _playerNetwork: {fileID: 639314865615998470}
   _playerShooting: {fileID: 4088738499090379562}
-  _worldNicknameText: {fileID: 0}
+  _worldNicknameText: {fileID: 9017617189695213204}
   _worldHpText: {fileID: 7562796143094367674}
 --- !u!114 &639314865615998470
 MonoBehaviour:

@@ -1,17 +1,15 @@
-using FishNet;
-using FishNet.Managing;
+﻿using FishNet;
 using UnityEngine;
 
 public class ServerAutoStart : MonoBehaviour
 {
-    [SerializeField] private ushort port = 7770;
-
     private void Start()
     {
+        // Если игра запущена с флагом -batchmode (без графики), стартуем сервер
         if (Application.isBatchMode)
         {
-            Debug.Log($"[Server] Starting on port {port}");
-            InstanceFinder.ServerManager.StartConnection(port);
+            Debug.Log("[Server] Headless mode detected. Starting server...");
+            InstanceFinder.ServerManager.StartConnection();
         }
     }
 }

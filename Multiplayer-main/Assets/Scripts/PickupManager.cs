@@ -22,10 +22,8 @@ public class PickupManager : MonoBehaviour
             return;
         }
 
-        // Подписываемся на событие изменения состояния сервера
         _networkManager.ServerManager.OnServerConnectionState += OnServerConnectionState;
 
-        // Если сервер уже запущен до подписки, вызываем спавн немедленно
         if (_networkManager.ServerManager.Started)
         {
             SpawnAll();
@@ -34,7 +32,6 @@ public class PickupManager : MonoBehaviour
 
     private void OnDestroy()
     {
-        // Важно: отписываемся от события при уничтожении объекта
         if (_networkManager != null && _networkManager.ServerManager != null)
         {
             _networkManager.ServerManager.OnServerConnectionState -= OnServerConnectionState;
@@ -43,7 +40,6 @@ public class PickupManager : MonoBehaviour
 
     private void OnServerConnectionState(ServerConnectionStateArgs args)
     {
-        // Проверяем, что состояние изменилось на 'Запущен'
         if (args.ConnectionState == LocalConnectionState.Started)
         {
             Debug.Log("PickupManager: Server started, spawning pickups...");
